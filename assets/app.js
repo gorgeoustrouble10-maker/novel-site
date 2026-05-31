@@ -3,6 +3,10 @@
 
   var BOOK = window.BOOK || { title: "小说", chapters: [] };
   var chapters = BOOK.chapters || [];
+  var volumes = BOOK.volumes || [];
+  var extras = BOOK.extras || [];
+  var appendix = BOOK.appendix || null;
+  var SHARE = BOOK.share || { line: "重生三十五次的女儿发现，救妈的方式才是害妈。", tags: ["反拯救", "母女", "末世伦理"] };
   var CRYPTO = BOOK.crypto || null;
   var PRICE = BOOK.price || "";
   var FREE = BOOK.freeChapters || 0;
@@ -18,7 +22,7 @@
   headerTitle.textContent = BOOK.title;
   document.title = BOOK.title;
   footerMeta.textContent =
-    "共 " + (BOOK.totalChapters || chapters.length) + " 章 · 约 " +
+    "共 " + volumes.length + " 卷 · " + (BOOK.totalChapters || chapters.length) + " 节 · 约 " +
     (BOOK.totalChars || 0).toLocaleString() + " 字 · 纯静态阅读站";
 
   var BOOK_BLURB =
@@ -213,6 +217,9 @@
   function parseHash() {
     var h = location.hash.replace(/^#/, "");
     if (!h || h === "/") return { view: "home" };
+    if (h === "/appendix") return { view: "appendix" };
+    var em = h.match(/^\/e\/(\d+)$/);
+    if (em) return { view: "extra", id: "e" + parseInt(em[1], 10) };
     var m = h.match(/^\/c\/(\d+)(?:\?(.*))?$/);
     if (m) {
       var params = {};
@@ -224,6 +231,8 @@
     return { view: "home" };
   }
   function findChapter(id) { for (var i = 0; i < chapters.length; i++) if (chapters[i].id === id) return i; return -1; }
+  function findExtra(id) { for (var i = 0; i < extras.length; i++) if (extras[i].id === id) return i; return -1; }
+  function chapterById(id) { var i = findChapter(id); return i === -1 ? null : chapters[i]; }
 
   /* ============================================================
      目录页
@@ -249,13 +258,23 @@
     var html = "";
     html += '<div class="book-hero">';
     html += '<h1 class="book-title">' + escapeHtml(BOOK.title) + "</h1>";
-    html += '<div class="book-meta"><span>共 ' + chapters.length + " 章</span>" +
+    html += '<div class="book-meta"><span>共 ' + volumes.length + " 卷 · " + chapters.length + " 节</span>" +
       '<span class="dot">约 ' + (BOOK.totalChars || 0).toLocaleString() + " 字</span>";
+    if (extras.length) html += '<span class="dot">' + extras.length + " 篇番外</span>";
     if (FREE >= chapters.length) html += '<span class="dot">全文免费</span>';
-    else if (FREE > 0 && !unlocked) html += '<span class="dot">前 ' + FREE + " 章免费试读</span>";
+    else if (FREE > 0 && !unlocked) html += '<span class="dot">前 ' + FREE + " 节免费试读</span>";
     if (FREE < chapters.length && unlocked) html += '<span class="dot">已解锁全本</span>';
     html += "</div>";
     html += '<div class="book-blurb">' + escapeHtml(BOOK_BLURB) + "</div>";
+
+    html += '<div class="share-card">';
+    html += '<div class="share-label">分享语（微信 / 小红书）</div>';
+    html += '<div class="share-line" id="share-line">' + escapeHtml(SHARE.line) + "</div>";
+    html += '<div class="share-tags">';
+    (SHARE.tags || []).forEach(function (t) { html += '<span class="share-tag">#' + escapeHtml(t) + "</span>"; });
+    html += "</div>";
+    html += '<button type="button" class="share-copy" id="share-copy">复制分享语</button>';
+    html += "</div>";
     html += "</div>";
 
     // 续读卡片
@@ -269,23 +288,55 @@
         '<span class="cc-arrow">→</span></a>';
     }
 
-    html += '<div class="section-cap">目录</div>';
-    html += '<ul class="toc">';
-    chapters.forEach(function (c) {
-      var showLock = c.locked && !unlocked;
-      var pr = progress.ch[c.id];
-      var badge = "";
-      if (pr && pr.done) badge = '<span class="badge done">已读完</span>';
-      else if (pr && pr.p > 2) badge = '<span class="badge reading">' + chapterPercent(c) + "%</span>";
-      html += '<li><a href="#/c/' + c.id + '">' +
-        '<span class="idx">' + String(c.id).padStart(2, "0") + "</span>" +
-        '<span class="name">' + escapeHtml(c.title) +
-        (showLock ? ' <span class="lock-tag">🔒</span>' : "") + "</span>" +
-        '<span class="status">' + badge + '<span class="words">' + c.length.toLocaleString() + " 字</span></span>" +
-        "</a></li>";
+    html += '<div class="aux-links">';
+    if (appendix) html += '<a class="aux-link" href="#/appendix">📎 设定附录</a>';
+    extras.forEach(function (e, idx) {
+      html += '<a class="aux-link" href="#/e/' + (idx + 1) + '">📖 ' + escapeHtml(e.title) + "</a>";
     });
-    html += "</ul>";
+    html += '<a class="aux-link" href="novel.epub" download>⬇ 下载 EPUB</a>';
+    html += "</div>";
+
+    html += '<div class="section-cap">目录 · 按卷浏览</div>';
+    volumes.forEach(function (vol) {
+      html += '<section class="vol-block">';
+      html += '<div class="vol-head">';
+      html += '<h2 class="vol-title">' + escapeHtml(vol.title) + "</h2>";
+      html += '<p class="vol-tag">' + escapeHtml(vol.tagline) + "</p>";
+      html += "</div>";
+      html += '<ul class="toc vol-toc">';
+      vol.sectionIds.forEach(function (sid) {
+        var c = chapterById(sid);
+        if (!c) return;
+        var showLock = c.locked && !unlocked;
+        var pr = progress.ch[c.id];
+        var badge = "";
+        if (pr && pr.done) badge = '<span class="badge done">已读完</span>';
+        else if (pr && pr.p > 2) badge = '<span class="badge reading">' + chapterPercent(c) + "%</span>";
+        html += '<li><a href="#/c/' + c.id + '">' +
+          '<span class="idx">' + String(c.id).padStart(2, "0") + "</span>" +
+          '<span class="name">' + escapeHtml(c.title.replace(/^第.+?·\s*/, "")) +
+          (showLock ? ' <span class="lock-tag">🔒</span>' : "") + "</span>" +
+          '<span class="status">' + badge + '<span class="words">' + c.length.toLocaleString() + " 字</span></span>" +
+          "</a></li>";
+      });
+      html += "</ul></section>";
+    });
     app.innerHTML = html;
+
+    var copyBtn = document.getElementById("share-copy");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", function () {
+        var text = SHARE.line + "\n" + (SHARE.tags || []).map(function (t) { return "#" + t; }).join(" ");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { copyBtn.textContent = "已复制"; setTimeout(function () { copyBtn.textContent = "复制分享语"; }, 2000); });
+        } else {
+          var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+          try { document.execCommand("copy"); copyBtn.textContent = "已复制"; } catch (e) { copyBtn.textContent = "请手动复制"; }
+          document.body.removeChild(ta);
+          setTimeout(function () { copyBtn.textContent = "复制分享语"; }, 2000);
+        }
+      });
+    }
     setProgress(false);
     window.scrollTo(0, 0);
   }
@@ -821,6 +872,60 @@
   });
   searchInput.addEventListener("keydown", function (e) { if (e.key === "Enter" && parseHash().view !== "home") location.hash = "#/"; });
 
+  function renderSupplementary(opts) {
+    curId = null; curParas = opts.paragraphs; paraEls = null;
+    var html = '<div class="reader-top"><span class="crumb">' + escapeHtml(opts.breadcrumb) + "</span></div>";
+    html += '<h1 class="chapter-title">' + escapeHtml(opts.title) + "</h1>";
+    if (opts.sub) html += '<p class="sup-sub">' + escapeHtml(opts.sub) + "</p>";
+    html += '<div class="chapter-body supplementary">';
+    opts.paragraphs.forEach(function (p) {
+      if (p.startsWith("---")) html += "<hr class=\"md-hr\" />";
+      else if (p.startsWith("## ")) html += "<h2 class=\"md-h2\">" + escapeHtml(p.replace(/^##+\s*/, "")) + "</h2>";
+      else if (p.startsWith("> ")) html += "<blockquote class=\"md-quote\">" + escapeHtml(p.replace(/^>\s*/, "")) + "</blockquote>";
+      else if (p.startsWith("*") && p.endsWith("*")) html += "<p class=\"md-em\">" + escapeHtml(p.replace(/^\*|\*$/g, "")) + "</p>";
+      else html += "<p class=\"para\">" + escapeHtml(p) + "</p>";
+    });
+    html += "</div>";
+    html += '<nav class="chapter-nav">';
+    if (opts.prev) html += '<a href="' + opts.prev.href + '">' + escapeHtml(opts.prev.label) + "</a>";
+    else html += '<span class="disabled">←</span>';
+    html += '<a class="to-toc" href="#/">目录</a>';
+    if (opts.next) html += '<a href="' + opts.next.href + '">' + escapeHtml(opts.next.label) + "</a>";
+    else html += '<span class="disabled">→</span>';
+    html += "</nav>";
+    app.innerHTML = html;
+    setProgress(false);
+    window.scrollTo(0, 0);
+  }
+
+  function renderAppendix() {
+    closeResume();
+    if (!appendix) { app.innerHTML = '<div class="empty">附录尚未生成，请运行 node build.mjs</div>'; return; }
+    renderSupplementary({
+      title: "设定附录",
+      breadcrumb: BOOK.title + " · 附录",
+      sub: "给想挖设定的读者 · 非唯一官方解释",
+      paragraphs: appendix.paragraphs,
+      prev: extras.length ? { href: "#/e/" + extras.length, label: "← " + extras[extras.length - 1].title } : null,
+      next: null,
+    });
+  }
+
+  function renderExtra(id) {
+    closeResume();
+    var i = findExtra(id);
+    if (i === -1) { app.innerHTML = '<div class="empty">未找到该番外。</div>'; return; }
+    var e = extras[i];
+    renderSupplementary({
+      title: e.title,
+      breadcrumb: BOOK.title + " · 番外",
+      sub: "主线外 · 独立阅读",
+      paragraphs: e.paragraphs,
+      prev: i > 0 ? { href: "#/e/" + i, label: "← " + extras[i - 1].title } : (appendix ? { href: "#/appendix", label: "← 设定附录" } : null),
+      next: i < extras.length - 1 ? { href: "#/e/" + (i + 2), label: extras[i + 1].title + " →" } : null,
+    });
+  }
+
   /* ============================================================
      调度
      ============================================================ */
@@ -828,6 +933,8 @@
     closePop(); closeResume();
     var r = parseHash();
     if (r.view === "chapter") renderChapter(r.id, { q: r.q, p: r.p });
+    else if (r.view === "appendix") renderAppendix();
+    else if (r.view === "extra") renderExtra(r.id);
     else { curId = null; renderHome(); }
   }
   window.addEventListener("hashchange", route);
