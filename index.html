@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>在线阅读</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <!-- 阅读进度条 -->
+  <div id="progress-bar" class="progress-bar"></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="home-link" href="#/" aria-label="返回目录">
+        <span id="header-title">小说</span>
+      </a>
+      <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2" />
+          <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+        <input id="search-input" type="search" placeholder="搜索标题或正文…" autocomplete="off" spellcheck="false" />
+      </div>
+      <button id="marks-btn" class="icon-btn" aria-label="书签与笔记" title="书签与笔记">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+        </svg>
+      </button>
+      <button id="settings-btn" class="icon-btn" aria-label="阅读设置" title="阅读设置">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+          <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="app"></main>
+
+  <footer class="site-footer">
+    <span id="footer-meta"></span>
+  </footer>
+
+  <!-- 回到顶部 -->
+  <button id="to-top" class="to-top" aria-label="回到顶部" hidden>
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <path d="M12 19V6M6 12l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  </button>
+
+  <!-- 设置面板 -->
+  <div id="settings-overlay" class="overlay" hidden></div>
+  <aside id="settings-panel" class="drawer" hidden aria-label="阅读设置">
+    <div class="drawer-head">
+      <span>阅读设置</span>
+      <button id="settings-close" class="icon-btn" aria-label="关闭">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+      </button>
+    </div>
+    <div class="drawer-body">
+      <section class="setting">
+        <div class="setting-label">背景主题</div>
+        <div id="theme-swatches" class="swatches"></div>
+      </section>
+      <section class="setting">
+        <div class="setting-label">字体</div>
+        <div id="font-options" class="segmented"></div>
+      </section>
+      <section class="setting">
+        <div class="setting-label">字号 <span id="val-fontSize" class="setting-val"></span></div>
+        <div class="stepper" data-key="fontSize"></div>
+      </section>
+      <section class="setting">
+        <div class="setting-label">行距 <span id="val-lineHeight" class="setting-val"></span></div>
+        <div class="stepper" data-key="lineHeight"></div>
+      </section>
+      <section class="setting">
+        <div class="setting-label">段间距 <span id="val-paraGap" class="setting-val"></span></div>
+        <div class="stepper" data-key="paraGap"></div>
+      </section>
+      <section class="setting">
+        <div class="setting-label">页面宽度 <span id="val-width" class="setting-val"></span></div>
+        <div class="stepper" data-key="width"></div>
+      </section>
+      <section class="setting setting-row">
+        <div class="setting-label">首行缩进</div>
+        <label class="switch"><input id="indent-toggle" type="checkbox" /><span class="switch-track"></span></label>
+      </section>
+      <button id="settings-reset" class="reset-btn">恢复默认设置</button>
+    </div>
+  </aside>
+
+  <!-- 书签 / 笔记面板 -->
+  <div id="marks-overlay" class="overlay" hidden></div>
+  <aside id="marks-panel" class="drawer" hidden aria-label="书签与笔记">
+    <div class="drawer-head">
+      <span>书签与笔记</span>
+      <button id="marks-close" class="icon-btn" aria-label="关闭">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+      </button>
+    </div>
+    <div class="marks-tabs">
+      <button class="tab active" data-tab="bookmarks">书签</button>
+      <button class="tab" data-tab="notes">笔记</button>
+    </div>
+    <div class="marks-tools">
+      <span id="marks-count" class="marks-count"></span>
+      <div class="marks-actions">
+        <button id="marks-export" class="marks-export">⬇ 导出</button>
+        <button id="marks-clear" class="marks-clear">清空</button>
+      </div>
+    </div>
+    <div id="marks-body" class="drawer-body"></div>
+  </aside>
+
+  <!-- 段落操作浮窗 -->
+  <div id="para-pop" class="para-pop" hidden>
+    <button data-act="bookmark"><span class="pp-ico">🔖</span><span class="pp-txt">书签</span></button>
+    <button data-act="note"><span class="pp-ico">📝</span><span class="pp-txt">笔记</span></button>
+    <button data-act="copy"><span class="pp-ico">📋</span><span class="pp-txt">复制</span></button>
+  </div>
+
+  <!-- 笔记编辑弹窗 -->
+  <div id="note-overlay" class="overlay" hidden></div>
+  <div id="note-modal" class="note-modal" hidden role="dialog" aria-label="编辑笔记">
+    <div class="note-quote" id="note-quote"></div>
+    <textarea id="note-text" placeholder="写下你的想法、批注…" rows="5"></textarea>
+    <div class="note-actions">
+      <button id="note-delete" class="note-btn ghost">删除</button>
+      <div style="flex:1"></div>
+      <button id="note-cancel" class="note-btn ghost">取消</button>
+      <button id="note-save" class="note-btn primary">保存</button>
+    </div>
+  </div>
+
+  <!-- data.js 由 build.mjs 生成，包含全部章节正文 -->
+  <script src="data.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
